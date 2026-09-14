@@ -479,9 +479,9 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var DrawioBody_module_css_default = {
+			"status": "uJNfQG_status",
 			"frame": "uJNfQG_frame",
-			"diagram": "uJNfQG_diagram",
-			"status": "uJNfQG_status"
+			"diagram": "uJNfQG_diagram"
 		};
 		//#endregion
 		//#region src/client/DrawioBody.tsx
