@@ -42,7 +42,7 @@
   "scripts": {
     "build": "tsdown -c tsdown.config.ts && node build-client.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node tests/smoke.mjs && node tests/style.mjs"
+    "test": "node tests/smoke.mjs && node tests/style.mjs && node tests/check-bundle.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "*",
