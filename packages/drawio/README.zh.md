@@ -27,6 +27,10 @@ description: "面向 DeepSeek Harness Web 侧栏的 draw.io（.drawio / mxGraph 
 
 `@deepseek-ai/*` 包均为 `external`，由宿主 harness 解析。所安装的 profile 必须组合 `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`——本插件写入的注册表由它拥有。
 
+## 已知限制
+
+连线绕行与边标签位置与 draw.io 不一致：`.drawio` 文件存的是边的端点与 `edgeStyle` 名称，不存路径，因此每个 viewer 都用自己的代码计算拐点与标签位置。maxGraph 不含 draw.io 在编辑器层做的路由与标签避让逻辑。样式部分（颜色、字体、字号、箭头）与 draw.io 一致。变通办法见仓库 README 的[已知限制](../../README.zh.md#已知限制)。
+
 ## 构建
 
 ```sh

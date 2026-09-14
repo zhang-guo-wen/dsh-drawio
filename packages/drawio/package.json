@@ -3,7 +3,7 @@
   "description": "draw.io (.drawio / mxGraph XML) document preview for the DeepSeek Harness Web Sidebar",
   "version": "0.1.0",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "main": "lib/index.mjs",
   "exports": {
     ".": {
@@ -35,8 +35,7 @@
     "cordis.patch.yml",
     "README.md",
     "README.zh.md"
-  ],
-  "scripts": {
+  ],  "scripts": {
     "build": "tsdown -c tsdown.config.ts && node build-client.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node tests/smoke.mjs && node tests/style.mjs"

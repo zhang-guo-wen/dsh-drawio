@@ -31,6 +31,13 @@ imports no engine.
 `@deepseek-ai/*` packages are `external` and resolve from the host harness. The installed profile must compose
 `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`, which owns the registry this plugin writes to.
 
+## Known limitations
+
+Edge routing and edge-label placement differ from draw.io: a `.drawio` file stores an edge's endpoints and `edgeStyle`
+name but not its path, so each viewer computes the bend points and label position with its own code. maxGraph does not
+carry draw.io's editor-level routing and label-avoidance logic. Styling — colours, fonts, sizes, arrowheads — does
+match draw.io. See [Known limitations](../../README.md#known-limitations) in the repository README for the workaround.
+
 ## Build
 
 ```sh

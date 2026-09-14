@@ -118,6 +118,35 @@ range; `--no-package-lock` keeps npm from writing a lockfile into a pnpm-managed
 > The `npm install` is what creates the `node_modules` junction (or symlink) pointing at this repository, so rebuilding
 > `lib/` here is picked up without reinstalling.
 
+## Known limitations
+
+**Edge routing and edge-label placement do not match draw.io.** A `.drawio` file stores an edge's endpoints
+(`source`, `target`) and its `edgeStyle` name, but **not the path between them**:
+
+```xml
+<mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;…" edge="1" source="n4" target="n5">
+  <mxGeometry relative="1" as="geometry" />   <!-- no points, no label offset -->
+</mxCell>
+```
+
+Both viewers therefore *compute* the bend points and the label position at render time, from the same inputs, using
+**different code**. draw.io's editor adds its own routing and label-avoidance behaviour on top of mxGraph, and maxGraph
+does not carry that code, so the two can differ:
+
+- an edge may take a different route (an extra bend, or a different side of a node);
+- an edge label may land on a node label when the gap between two nodes is narrower than the label.
+
+The second is geometric, not cosmetic: when two nodes are 50px apart and the label is 66px wide, it cannot be placed
+outside both boxes without moving a node. Giving the label an opaque background only paints a box over the text it
+covers, which reads worse, so this renderer does not do it.
+
+**Workarounds.** In draw.io, drag the edge label to where you want it: the editor then writes an explicit
+`<mxPoint as="offset">` into the file, and every viewer — including this one — will honour it. Widening the gap between
+the two nodes works equally well. Both fix the diagram at its source rather than in one viewer.
+
+Everything a `Stylesheet` decides **does** match draw.io; see [draw.io's defaults](#drawio8217s-defaults-not-maxgraphs)
+above.
+
 ## Requirements
 
 | | |
@@ -128,4 +157,4 @@ range; `--no-package-lock` keeps npm from writing a lockfile into a pnpm-managed
 
 ## License
 
-MIT. Bundled third-party code is attributed in [NOTICE](NOTICE).
+Apache-2.0. Bundled third-party code is attributed in [NOTICE](NOTICE).

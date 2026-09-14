@@ -95,6 +95,27 @@ dsh --profile web --dump-config | grep -A2 drawio
 >
 > 正是这次 `npm install` 创建了指向本仓库的 `node_modules` junction（或软链），因此在本仓库重建 `lib/` 会被直接读到，无需重装。
 
+## 已知限制
+
+**连线绕行与边标签位置与 draw.io 不一致。** `.drawio` 文件存的是边的两个端点（`source`、`target`）和 `edgeStyle` 名称，**不存中间的路径**：
+
+```xml
+<mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;…" edge="1" source="n4" target="n5">
+  <mxGeometry relative="1" as="geometry" />   <!-- 没有路径点，也没有标签偏移 -->
+</mxCell>
+```
+
+因此两个 viewer 都在渲染时**各自计算**拐点与标签位置：输入相同，**代码不同**。draw.io 编辑器在 mxGraph 之上加了自己的路由与标签避让逻辑，maxGraph 不含这段代码，于是两者会有差异：
+
+- 一条边可能走出不同路线（多一个拐弯，或走节点的另一侧）；
+- 当两个节点间距小于标签宽度时，边标签会压在节点标签上。
+
+第二点是**几何问题而非外观问题**：两个节点相距 50px、而标签宽 66px 时，不移动节点就没有位置能同时避开两个框。给标签加不透明背景，只会用它盖住底下的文字，观感更差，所以本渲染器不这么做。
+
+**变通办法。** 在 draw.io 里把边标签拖到你想要的位置：编辑器会把显式的 `<mxPoint as="offset">` 写进文件，此后**任何 viewer（包括本插件）都会遵循它**。把两个节点的间距拉宽同样有效。两者都是**在图的源头修好**，而不是只在某一个 viewer 里修。
+
+由 `Stylesheet` 决定的部分（颜色、字体、字号、箭头）**是**与 draw.io 一致的，见上文「用 draw.io 的默认值，而不是 maxGraph 的」。
+
 ## 环境要求
 
 | | |
@@ -105,4 +126,4 @@ dsh --profile web --dump-config | grep -A2 drawio
 
 ## 许可
 
-MIT。内联的第三方代码在 [NOTICE](NOTICE) 中署名。
+Apache-2.0。内联的第三方代码在 [NOTICE](NOTICE) 中署名。
