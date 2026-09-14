@@ -2,146 +2,60 @@
 
 English | [中文](README.zh.md)
 
-A **standalone** plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) that previews
+A standalone plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH) that previews
 `.drawio` files as diagrams in the Web Sidebar.
 
-It does not live in the harness monorepo and does not use the harness build scripts. `@deepseek-ai/*` packages are
-`external` in the browser bundle and resolve from the host harness at runtime, exactly like any other third-party DSH
-plugin.
-
-## What you get
-
-Open any `.drawio` file from the Sidebar's file tree and it renders as the diagram you drew, instead of opening as
+Open a `.drawio` file from the Sidebar's file tree and it renders as the diagram you drew, instead of opening as
 mxGraph XML source.
 
-- **Read-only and inert.** The file is decoded and laid out offscreen; the pane receives an SVG `data:` URL and never an
-  engine instance or a live DOM. The markup never enters the application DOM, so a diagram's content cannot script the
-  page.
+![A .drawio file rendered as a diagram](docs/example.png)
+
+## What it does
+
+- **Read-only and inert.** The file is decoded and laid out offscreen; the pane receives an SVG `data:` URL and never
+  an engine instance or a live DOM. The markup never enters the application DOM, so a diagram's content cannot script
+  the page.
 - **Both draw.io save formats.** Plain mxGraph XML, and draw.io's compressed body (base64 + raw DEFLATE + percent
   escape). A multi-page `<mxfile>` renders its first page.
 - **No file leaves your machine.** Rendering is fully local. Unlike a hosted viewer, nothing is uploaded anywhere.
-
-## What it contributes
-
-| | |
-|---|---|
-| Preview metadata | `ctx.documentPreviews` — the `drawio` suffix, `loading: 'bytes-complete'`, `wrap: false`, at the `extension` band so it outranks the builtin plain-text fallback |
-| Body | the keyed `sidebar.right.tab.document` slot, under id `@zhang-guo-wen/dsh-drawio` |
-| Copy | the `sidebarDrawio` locale namespace (zh, en) |
-| Host half | nothing — `src/index.ts` is a no-op, because the preview is entirely browser-side |
-
-The renderer is handed to the body through the entry's inject face as `createRenderer`, so the presentation component
-imports no engine.
-
-## Layout
-
-The repository **is** the plugin package: its root `package.json` is `@zhang-guo-wen/dsh-drawio`. That is required, not
-a style choice — `npm install github:<owner>/<repo>` packages the repository root, so a plugin under `packages/*` would
-install as the wrong thing.
-
-```
-package.json                    the plugin manifest (name, exports, dsh.client, dsh.bundle)
-src/index.ts                    host half — deliberately contributes nothing
-src/client/index.ts             registers the preview metadata and the Sidebar body
-src/client/DrawioBody.tsx       presentation component (imports no engine)
-src/client/maxgraph.ts          the only module that loads @maxgraph/core
-src/client/drawio-style.ts      draw.io's default cell styles for the engine
-src/client/drawio.ts            decode: plain XML and compressed bodies
-build-client.mjs                bundles the browser half into the loader handoff
-tsdown.config.ts                builds the host half
-cordis.patch.yml                the composition row this bundle inserts
-lib/                            built artifacts, committed so git installs work
-```
-
-### draw.io's defaults, not maxGraph's
-
-maxGraph's `createDefaultVertexStyle()` sets a brown `#774400` label, so a cell whose style string omits a font color
-renders in a color that appears nowhere in a draw.io diagram. `src/client/drawio-style.ts` passes a `Stylesheet` with
-draw.io's defaults instead: a neutral `#333333` label, the `#dae8fc` / `#6c8ebf` rectangle palette, a 12px vertex label,
-an 11px edge label, and a filled arrowhead.
-
-A cell's own style string still wins, because the engine merges it over these defaults — an explicit `fillColor`,
-`strokeColor`, or `fontColor` in the file is unaffected. `tests/style.mjs` pins both halves of that contract.
-
-## Build
-
-```sh
-npm install
-npm run build      # host half via tsdown, browser half via build-client.mjs
-npm run typecheck  # tsc against the PUBLISHED @deepseek-ai/* packages
-npm test           # loads the built bundle the way the browser does
-```
-
-`lib/` is committed. That is what lets someone install this repository directly with git, with no build on their side.
-Re-run `npm run build` and commit `lib/` whenever you change `src/`.
-
-### Why the browser half has its own bundler
-
-The harness monorepo builds its client bundles with `packages/client/tsdown.client.ts`, which is not published. This
-repository therefore bundles the browser half itself, and two details from that builder are load-bearing:
-
-1. **`platform: 'browser'` is set explicitly.** Under rolldown's `node` platform, every dependency resolves through its
-   `node` export condition, so a library whose `exports` puts a platform condition before `import` gets its *server*
-   entry inlined. Those entries can call `createRequire('module')` at module scope, producing a `require("module")` the
-   browser module table cannot answer — the plugin then fails to mount.
-2. **Only react and the DSH client packages stay external.** Implementation libraries (`@maxgraph/core`, `fflate`) are
-   inlined, so the deployed artifact has no install-time dependency, while a browser-safe DSH utility
-   (`@deepseek-ai/dsh-util-workspace-path`) is inlined rather than requested from the module table.
-
-The build verifies both: `npm test` loads the built bundle with a module table containing nothing but `react`,
-`react/jsx-runtime`, and the workspace-path utility, and fails if the bundle asks for anything else.
+- **draw.io's styling, not the engine's.** The renderer applies a stylesheet matching draw.io's defaults, so a cell
+  whose style string omits a color does not inherit the storage engine's own palette. A cell's own style still wins.
 
 ## Install
 
-Use the official plugin command. It forwards to pnpm in the profile directory and **maintains the profile manifest
-itself**: it adds the dependency *and* appends this package to `dsh.profile.bundles`, because the package declares
-`dsh.bundle`. Never edit `$DSH_HOME/profiles/<name>/package.json` by hand.
+The built `lib/` is committed, so the repository installs and runs directly — no build step on your machine.
 
 ```sh
-dsh plugin --profile web add github:zhang-guo-wen/dsh-drawio
+# over HTTPS
+npx @deepseek-ai/dsh plugin --profile web add git+https://github.com/zhang-guo-wen/dsh-drawio.git
+
+# or over SSH
+npx @deepseek-ai/dsh plugin --profile web add git+ssh://git@github.com/zhang-guo-wen/dsh-drawio.git
 ```
 
-`lib/` is committed, so a git install needs no build step and no `prepare`-script allowance on the installing machine —
-which is exactly the catch the [official tutorial](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)
-describes for TypeScript plugins that ship sources only.
-
-### Working on the plugin
-
-To develop against a local clone, install the directory instead. pnpm creates a **symlink** for a directory install, so
-rebuilding `lib/` is picked up on the next host start with no reinstall:
+To develop against a local checkout, install the directory. pnpm creates a **symlink**, so a rebuilt `lib/` reaches
+the host on the next start with no reinstall:
 
 ```sh
-dsh plugin --profile web add C:/path/to/dsh-drawio
+npx @deepseek-ai/dsh plugin --profile web add /absolute/path/to/dsh-drawio
 ```
 
-This is the mode the repository's own `file:` install uses; the profile records it as `link:C:/path/to/dsh-drawio`.
-
-### Other sources
+Then restart the host:
 
 ```sh
-dsh plugin --profile web add @zhang-guo-wen/dsh-drawio        # npm, once published
-dsh plugin --profile web add ./dsh-drawio-0.1.0.tgz          # a tarball from `pnpm pack`
+npx @deepseek-ai/dsh web
 ```
 
-Remove it, dependency and layer together, with:
+You do not edit the profile manifest by hand: `dsh plugin add` adds both the dependency and the bundle entry.
+Remove it, dependency and layer together, with `dsh plugin --profile web remove @zhang-guo-wen/dsh-drawio`.
 
-```sh
-dsh plugin --profile web remove @zhang-guo-wen/dsh-drawio
-```
-
-Verify the layer resolved before booting, then restart the host:
-
-```sh
-dsh --profile web --dump-config | grep -A2 drawio
-```
-
-> The installed profile must already compose `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`, which owns the
-> `documentPreviews` registry this plugin contributes to. Every shipped web profile does.
+The profile must already compose `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`, which owns the registry this
+plugin contributes to. Every shipped web profile does.
 
 ## Known limitations
 
-**Edge routing and edge-label placement do not match draw.io.** A `.drawio` file stores an edge's endpoints
-(`source`, `target`) and its `edgeStyle` name, but **not the path between them**:
+**Edge routing and edge-label placement do not match draw.io.** A `.drawio` file stores an edge's endpoints and its
+`edgeStyle` name, but **not the path between them**:
 
 ```xml
 <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;…" edge="1" source="n4" target="n5">
@@ -150,31 +64,53 @@ dsh --profile web --dump-config | grep -A2 drawio
 ```
 
 Both viewers therefore *compute* the bend points and the label position at render time, from the same inputs, using
-**different code**. draw.io's editor adds its own routing and label-avoidance behaviour on top of mxGraph, and maxGraph
-does not carry that code, so the two can differ:
-
-- an edge may take a different route (an extra bend, or a different side of a node);
-- an edge label may land on a node label when the gap between two nodes is narrower than the label.
+**different code**. draw.io's editor adds its own routing and label-avoidance behaviour on top of the shared engine,
+and this plugin's engine does not carry that code, so the two can differ: an edge may take a different route, and a
+label may land on a node label when the gap between two nodes is narrower than the label.
 
 The second is geometric, not cosmetic: when two nodes are 50px apart and the label is 66px wide, it cannot be placed
 outside both boxes without moving a node. Giving the label an opaque background only paints a box over the text it
-covers, which reads worse, so this renderer does not do it.
+covers, which reads worse, so the renderer does not do it.
 
-**Workarounds.** In draw.io, drag the edge label to where you want it: the editor then writes an explicit
-`<mxPoint as="offset">` into the file, and every viewer — including this one — will honour it. Widening the gap between
+**Workaround.** In draw.io, drag the edge label where you want it: the editor then writes an explicit
+`<mxPoint as="offset">` into the file, and every viewer — including this one — honours it. Widening the gap between
 the two nodes works equally well. Both fix the diagram at its source rather than in one viewer.
 
-Everything a `Stylesheet` decides **does** match draw.io; see [draw.io's defaults](#drawio8217s-defaults-not-maxgraphs)
-above.
+**Shapes outside the engine's set are drawn as rectangles.** draw.io ships several hundred stencil shapes; the bundled
+engine carries its own smaller set, so a shape it does not know is rendered as a plain rectangle rather than omitted.
 
-## Requirements
+## Development
 
-| | |
-|---|---|
-| Harness | a build whose published `@deepseek-ai/dsh-client-*` line is `0.1.5-rc.2` (the version this repo type-checks against) |
-| Browser | any Chromium/Firefox/Safari the harness Web GUI supports |
-| Node | 22+ (build only) |
+The repository root **is** the plugin package: its root `package.json` is `@zhang-guo-wen/dsh-drawio`. `npm install
+<git-url>` and `dsh plugin add` both package the repository root, so a plugin under `packages/*` would install as the
+wrong thing.
+
+```sh
+npm install
+npm run build      # host half via tsdown; browser half via build-client.mjs
+npm run typecheck  # tsc against the PUBLISHED @deepseek-ai/* packages
+npm test           # loads the built bundle the way the browser does
+```
+
+`lib/` is committed — that is what lets someone install this repository with no build on their side. Re-run
+`npm run build` and commit `lib/` whenever you change `src/`.
+
+### Why the browser half has its own bundler
+
+The harness monorepo builds its client bundles with a script it does not publish, so this repository bundles the
+browser half itself. Two details are load-bearing:
+
+1. **`platform: 'browser'` is set explicitly.** Under the bundler's `node` platform every dependency resolves through
+   its `node` export condition, so a library whose `exports` lists a platform condition before `import` gets its
+   *server* entry inlined — and those entries can call `createRequire('module')` at module scope, producing a
+   `require("module")` the browser module table cannot answer.
+2. **Only react and the DSH client packages stay external.** Implementation libraries are inlined, so the deployed
+   artifact has no install-time dependency.
+
+`npm test` verifies both: it loads the built bundle with a module table containing nothing but those externals, and
+fails if the bundle asks for anything else.
 
 ## License
 
-Apache-2.0. Bundled third-party code is attributed in [NOTICE](NOTICE).
+Apache License 2.0 — see [LICENSE](LICENSE). Bundled third-party code is attributed in [NOTICE](NOTICE).
+"draw.io" is a trademark of its owner; this package is not affiliated with or endorsed by draw.io.
