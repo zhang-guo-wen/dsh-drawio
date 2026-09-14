@@ -21,19 +21,36 @@ mxGraph XML source.
   escape). A multi-page `<mxfile>` renders its first page.
 - **No file leaves your machine.** Rendering is fully local. Unlike a hosted viewer, nothing is uploaded anywhere.
 
+## What it contributes
+
+| | |
+|---|---|
+| Preview metadata | `ctx.documentPreviews` — the `drawio` suffix, `loading: 'bytes-complete'`, `wrap: false`, at the `extension` band so it outranks the builtin plain-text fallback |
+| Body | the keyed `sidebar.right.tab.document` slot, under id `@zhang-guo-wen/dsh-drawio` |
+| Copy | the `sidebarDrawio` locale namespace (zh, en) |
+| Host half | nothing — `src/index.ts` is a no-op, because the preview is entirely browser-side |
+
+The renderer is handed to the body through the entry's inject face as `createRenderer`, so the presentation component
+imports no engine.
+
 ## Layout
 
+The repository **is** the plugin package: its root `package.json` is `@zhang-guo-wen/dsh-drawio`. That is required, not
+a style choice — `npm install github:<owner>/<repo>` packages the repository root, so a plugin under `packages/*` would
+install as the wrong thing.
+
 ```
-packages/drawio/
-  src/index.ts                  host half — deliberately contributes nothing
-  src/client/index.ts           registers the preview metadata and the Sidebar body
-  src/client/DrawioBody.tsx     presentation component (imports no engine)
-  src/client/maxgraph.ts        the only module that loads @maxgraph/core
-  src/client/drawio-style.ts    draw.io's default cell styles for the engine
-  src/client/drawio.ts          decode: plain XML and compressed bodies
-  build-client.mjs              bundles the browser half into the loader handoff
-  cordis.patch.yml              the composition row this package inserts
-  lib/                          built artifacts, committed so git installs work
+package.json                    the plugin manifest (name, exports, dsh.client, dsh.bundle)
+src/index.ts                    host half — deliberately contributes nothing
+src/client/index.ts             registers the preview metadata and the Sidebar body
+src/client/DrawioBody.tsx       presentation component (imports no engine)
+src/client/maxgraph.ts          the only module that loads @maxgraph/core
+src/client/drawio-style.ts      draw.io's default cell styles for the engine
+src/client/drawio.ts            decode: plain XML and compressed bodies
+build-client.mjs                bundles the browser half into the loader handoff
+tsdown.config.ts                builds the host half
+cordis.patch.yml                the composition row this bundle inserts
+lib/                            built artifacts, committed so git installs work
 ```
 
 ### draw.io's defaults, not maxGraph's
@@ -76,11 +93,19 @@ The build verifies both: `npm test` loads the built bundle with a module table c
 
 ## Install
 
-The plugin is installed into a DSH profile, not into the harness checkout:
+The plugin is installed into a DSH profile, not into the harness checkout. `lib/` is committed, so a git install needs
+no build step on the installing machine:
 
 ```sh
 cd "$DSH_HOME/profiles/web"
-npm install <path-or-git-url-to-this-repo>/packages/drawio --legacy-peer-deps --no-package-lock --no-audit --no-fund
+npm install github:zhang-guo-wen/dsh-drawio \
+  --legacy-peer-deps --no-package-lock --no-audit --no-fund
+```
+
+To develop against a local clone instead, point npm at the clone's root:
+
+```sh
+npm install "file:C:/path/to/dsh-drawio" --legacy-peer-deps --no-package-lock --no-audit --no-fund
 ```
 
 Then register it as a **profile bundle** in that profile's `package.json`. A plugin row is not inserted by hand: the
@@ -98,7 +123,7 @@ profile applies each bundle's own `cordis.patch.yml`, which is what this package
   },
   "dependencies": {
     // …existing dependencies…
-    "@zhang-guo-wen/dsh-drawio": "file:C:/path/to/this-repo/packages/drawio"
+    "@zhang-guo-wen/dsh-drawio": "github:zhang-guo-wen/dsh-drawio"
   }
 }
 ```

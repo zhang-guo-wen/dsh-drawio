@@ -14,20 +14,34 @@
 - **兼容 draw.io 的两种保存格式。** 纯 mxGraph XML，以及 draw.io 的压缩体（base64 + raw DEFLATE + 百分号转义）。多页 `<mxfile>` 只渲染第一页。
 - **文件不出本机。** 渲染完全本地完成。与托管查看器不同，任何内容都不会被上传。
 
+## 贡献了什么
+
+| | |
+|---|---|
+| 预览元数据 | `ctx.documentPreviews` —— `drawio` 后缀、`loading: 'bytes-complete'`、`wrap: false`，位于 `extension` 档位，因此优先于内置纯文本兜底实现 |
+| body | keyed 槽位 `sidebar.right.tab.document`，id 为 `@zhang-guo-wen/dsh-drawio` |
+| 文案 | `sidebarDrawio` locale 命名空间（中文、英文） |
+| host 半 | 无——`src/index.ts` 是空操作，因为预览完全在浏览器侧 |
+
+渲染器经入口的 inject 面以 `createRenderer` 交给 body，因此表现层组件不导入任何引擎。
+
 ## 目录结构
 
 ```
-packages/drawio/
-  src/index.ts                  host 半——刻意不贡献任何东西
-  src/client/index.ts           注册预览元数据与侧栏 body
-  src/client/DrawioBody.tsx     表现层组件（不导入引擎）
-  src/client/maxgraph.ts        唯一加载 @maxgraph/core 的模块
-  src/client/drawio-style.ts    引擎使用的 draw.io 默认单元格样式
-  src/client/drawio.ts          解码：纯 XML 与压缩体
-  build-client.mjs              把浏览器半打成加载器 handoff
-  cordis.patch.yml              本包插入的组合行
-  lib/                          构建产物，随仓库提交以便 git 安装
+package.json                    插件清单（name、exports、dsh.client、dsh.bundle）
+src/index.ts                    host 半——刻意不贡献任何东西
+src/client/index.ts             注册预览元数据与侧栏 body
+src/client/DrawioBody.tsx       表现层组件（不导入引擎）
+src/client/maxgraph.ts          唯一加载 @maxgraph/core 的模块
+src/client/drawio-style.ts      引擎使用的 draw.io 默认单元格样式
+src/client/drawio.ts            解码：纯 XML 与压缩体
+build-client.mjs                把浏览器半打成加载器 handoff
+tsdown.config.ts                构建 host 半
+cordis.patch.yml                本 bundle 插入的组合行
+lib/                            构建产物，随仓库提交以便 git 安装
 ```
+
+**本仓库就是插件包**：根 `package.json` 就是 `@zhang-guo-wen/dsh-drawio`。这是硬性要求而非风格选择——`npm install github:<owner>/<repo>` 打包的是**仓库根**，所以放在 `packages/*` 下的插件会被装成错误的东西。
 
 ### 用 draw.io 的默认值，而不是 maxGraph 的
 
