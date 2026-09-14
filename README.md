@@ -93,55 +93,50 @@ The build verifies both: `npm test` loads the built bundle with a module table c
 
 ## Install
 
-The plugin is installed into a DSH profile, not into the harness checkout. `lib/` is committed, so a git install needs
-no build step on the installing machine:
+Use the official plugin command. It forwards to pnpm in the profile directory and **maintains the profile manifest
+itself**: it adds the dependency *and* appends this package to `dsh.profile.bundles`, because the package declares
+`dsh.bundle`. Never edit `$DSH_HOME/profiles/<name>/package.json` by hand.
 
 ```sh
-cd "$DSH_HOME/profiles/web"
-npm install github:zhang-guo-wen/dsh-drawio \
-  --legacy-peer-deps --no-package-lock --no-audit --no-fund
+dsh plugin --profile web add github:zhang-guo-wen/dsh-drawio
 ```
 
-To develop against a local clone instead, point npm at the clone's root:
+`lib/` is committed, so a git install needs no build step and no `prepare`-script allowance on the installing machine —
+which is exactly the catch the [official tutorial](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)
+describes for TypeScript plugins that ship sources only.
+
+### Working on the plugin
+
+To develop against a local clone, install the directory instead. pnpm creates a **symlink** for a directory install, so
+rebuilding `lib/` is picked up on the next host start with no reinstall:
 
 ```sh
-npm install "file:C:/path/to/dsh-drawio" --legacy-peer-deps --no-package-lock --no-audit --no-fund
+dsh plugin --profile web add C:/path/to/dsh-drawio
 ```
 
-Then register it as a **profile bundle** in that profile's `package.json`. A plugin row is not inserted by hand: the
-profile applies each bundle's own `cordis.patch.yml`, which is what this package ships. Both lists must name it.
+This is the mode the repository's own `file:` install uses; the profile records it as `link:C:/path/to/dsh-drawio`.
 
-```jsonc
-{
-  "dsh": {
-    "profile": {
-      "bundles": [
-        // …existing bundles…
-        "@zhang-guo-wen/dsh-drawio"
-      ]
-    }
-  },
-  "dependencies": {
-    // …existing dependencies…
-    "@zhang-guo-wen/dsh-drawio": "github:zhang-guo-wen/dsh-drawio"
-  }
-}
+### Other sources
+
+```sh
+dsh plugin --profile web add @zhang-guo-wen/dsh-drawio        # npm, once published
+dsh plugin --profile web add ./dsh-drawio-0.1.0.tgz          # a tarball from `pnpm pack`
 ```
 
-Restart the host. Verify the composition resolved before booting:
+Remove it, dependency and layer together, with:
+
+```sh
+dsh plugin --profile web remove @zhang-guo-wen/dsh-drawio
+```
+
+Verify the layer resolved before booting, then restart the host:
 
 ```sh
 dsh --profile web --dump-config | grep -A2 drawio
 ```
 
-`--legacy-peer-deps` is needed only when the profile already carries a third-party plugin with an unsatisfiable peer
-range; `--no-package-lock` keeps npm from writing a lockfile into a pnpm-managed profile.
-
 > The installed profile must already compose `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`, which owns the
 > `documentPreviews` registry this plugin contributes to. Every shipped web profile does.
->
-> The `npm install` is what creates the `node_modules` junction (or symlink) pointing at this repository, so rebuilding
-> `lib/` here is picked up without reinstalling.
 
 ## Known limitations
 

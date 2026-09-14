@@ -71,43 +71,44 @@ harness monorepo 用 `packages/client/tsdown.client.ts` 打客户端产物，而
 
 ## 安装
 
-插件装入 DSH profile，而不是 harness 检出目录：
+使用官方插件命令。它把参数转发给 profile 目录里的 pnpm，并**自行维护 profile 清单**：既添加依赖，也把本包追加进 `dsh.profile.bundles`——因为本包声明了 `dsh.bundle`。**不要手工编辑** `$DSH_HOME/profiles/<name>/package.json`。
 
 ```sh
-cd "$DSH_HOME/profiles/web"
-npm install <指向本仓库的路径或 git 地址>/packages/drawio --legacy-peer-deps --no-package-lock --no-audit --no-fund
+dsh plugin --profile web add github:zhang-guo-wen/dsh-drawio
 ```
 
-然后在该 profile 的 `package.json` 中把它注册为 **profile bundle**。插件行不是手工 insert 的：profile 会应用每个 bundle 自带的 `cordis.patch.yml`，而这正是本包所提供的东西。两个列表都要写上它。
+`lib/` 随仓库提交，因此 git 安装既不需要构建，也不需要在安装方授权 `prepare` 脚本——这正是[官方教程](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.zh.md)里针对"只发源码的 TypeScript 插件"所描述的那个坑。
 
-```jsonc
-{
-  "dsh": {
-    "profile": {
-      "bundles": [
-        // ……原有 bundles……
-        "@zhang-guo-wen/dsh-drawio"
-      ]
-    }
-  },
-  "dependencies": {
-    // ……原有 dependencies……
-    "@zhang-guo-wen/dsh-drawio": "file:C:/path/to/this-repo/packages/drawio"
-  }
-}
+### 开发本插件时
+
+若要对着本地 clone 开发，改为安装目录。pnpm 对目录安装会创建**软链**，因此重建 `lib/` 后下次启动 host 即生效，无需重装：
+
+```sh
+dsh plugin --profile web add C:/path/to/dsh-drawio
 ```
 
-重启 host。启动前先验证组合能解析：
+本仓库自己的开发安装用的就是这种方式；profile 里记为 `link:C:/path/to/dsh-drawio`。
+
+### 其他来源
+
+```sh
+dsh plugin --profile web add @zhang-guo-wen/dsh-drawio        # 发布到 npm 后
+dsh plugin --profile web add ./dsh-drawio-0.1.0.tgz          # `pnpm pack` 出来的 tarball
+```
+
+移除时，依赖与层会一并删除：
+
+```sh
+dsh plugin --profile web remove @zhang-guo-wen/dsh-drawio
+```
+
+启动前先验证层能解析，然后重启 host：
 
 ```sh
 dsh --profile web --dump-config | grep -A2 drawio
 ```
 
-`--legacy-peer-deps` 仅在 profile 已带有 peer 范围无法满足的第三方插件时才需要；`--no-package-lock` 可避免 npm 往 pnpm 管理的 profile 里写 lockfile。
-
 > 所安装的 profile 必须已经组合了 `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`——本插件所贡献的 `documentPreviews` 注册表由它拥有。所有随附的 web profile 都满足这一点。
->
-> 正是这次 `npm install` 创建了指向本仓库的 `node_modules` junction（或软链），因此在本仓库重建 `lib/` 会被直接读到，无需重装。
 
 ## 已知限制
 
