@@ -1,0 +1,22 @@
+/* The diagram keeps its intrinsic size and the document body provides scrolling. */
+.frame {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12px;
+  min-width: 100%;
+  width: max-content;
+}
+
+.diagram {
+  max-width: none;
+  height: auto;
+  user-select: none;
+}
+
+.status {
+  display: block;
+  padding: 12px;
+  color: var(--dsw-color-text-secondary);
+  font-size: 13px;
+}

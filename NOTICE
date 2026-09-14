@@ -1,0 +1,61 @@
+dsh-drawio
+Copyright 2026 zhang-guo-wen
+
+This product is licensed under the MIT License (see LICENSE).
+
+--------------------------------------------------------------------------
+
+This product includes software developed as part of DeepSeek Harness
+(https://github.com/deepseek-ai/deepseek-harness).
+
+The document-preview registry contract this plugin implements
+(`ctx.documentPreviews`, `DocumentPreviewDefinition`, `DocumentPreviewProps`,
+and the `sidebar.right.tab.document` slot) is defined by that project. The
+contract is consumed as published npm packages and is not copied or vendored
+here. Those packages remain under the MIT License:
+
+MIT License
+
+Copyright (c) 2026 DeepSeek
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------
+
+BUNDLED THIRD-PARTY COMPONENTS
+
+The following libraries are inlined into `packages/drawio/lib/client.js` at
+build time and therefore ship inside the distributed artifact.
+
+1. @maxgraph/core 0.24.0 — Apache License 2.0
+   https://github.com/maxGraph/maxGraph
+   The mxGraph successor used to lay out and serialize draw.io diagrams.
+   Licensed under the Apache License, Version 2.0; a copy of that license is
+   available at http://www.apache.org/licenses/LICENSE-2.0
+
+2. fflate 0.8.3 — MIT License
+   https://github.com/101arrowz/fflate
+   Used to inflate draw.io's compressed (raw DEFLATE) diagram bodies.
+
+--------------------------------------------------------------------------
+
+BUILD-ONLY DEPENDENCIES
+
+lightningcss (MPL-2.0), rolldown (MIT), tsdown (MIT), and typescript
+(Apache-2.0) are used to produce the artifacts and are not distributed.
