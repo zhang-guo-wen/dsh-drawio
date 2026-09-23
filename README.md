@@ -37,7 +37,7 @@ npx @deepseek-ai/dsh plugin --profile web add /absolute/path/to/dsh-drawio
 npx @deepseek-ai/dsh web
 ```
 
-Remove it, dependency and layer together, with `dsh plugin --profile web remove @zhang-guo-wen/dsh-drawio`.
+Remove it, dependency and layer together, with `dsh plugin --profile web remove @guowenzhang/dsh-drawio`.
 
 The profile must already compose `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`, which owns the registry this
 plugin contributes to. Every shipped web profile does.
@@ -68,7 +68,7 @@ stencil shapes and the bundled engine carries a smaller set of its own.
 
 ## Development
 
-The repository root **is** the plugin package: its root `package.json` is `@zhang-guo-wen/dsh-drawio`. `npm install
+The repository root **is** the plugin package: its root `package.json` is `@guowenzhang/dsh-drawio`. `npm install
 <git-url>` and `dsh plugin add` both package the repository root, so a plugin under `packages/*` would install as the
 wrong thing.
 

@@ -35,7 +35,7 @@ npx @deepseek-ai/dsh plugin --profile web add /绝对路径/dsh-drawio
 npx @deepseek-ai/dsh web
 ```
 
-卸载用 `dsh plugin --profile web remove @zhang-guo-wen/dsh-drawio`，依赖与层一起移除。
+卸载用 `dsh plugin --profile web remove @guowenzhang/dsh-drawio`，依赖与层一起移除。
 
 所安装的 profile 必须已经组合了 `@deepseek-ai/dsh-client-ui-sidebar-documentpreview`——本插件所贡献的注册表由它
 拥有。所有随附的 web profile 都满足这一点。
@@ -64,7 +64,7 @@ viewer 里修。
 
 ## 开发
 
-**仓库根就是插件包**：根 `package.json` 即 `@zhang-guo-wen/dsh-drawio`。`npm install <git-url>` 与
+**仓库根就是插件包**：根 `package.json` 即 `@guowenzhang/dsh-drawio`。`npm install <git-url>` 与
 `dsh plugin add` 打包的都是仓库根，所以放在 `packages/*` 下的插件会被装成错误的东西。
 
 ```sh

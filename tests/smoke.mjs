@@ -66,7 +66,7 @@ function scenario() {
 
   const handoff = window.__handoff
   assert.ok(handoff, 'client bundle did not register a handoff')
-  assert.equal(handoff.id, '@zhang-guo-wen/dsh-drawio', 'handoff id mismatch')
+  assert.equal(handoff.id, '@guowenzhang/dsh-drawio', 'handoff id mismatch')
   assert.equal(typeof handoff.factory, 'function', 'handoff factory missing')
 
   const requested = []
