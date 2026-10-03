@@ -1,6 +1,6 @@
 {
   "name": "@guowenzhang/dsh-drawio",
-  "description": "Standalone DeepSeek Harness plugin: preview .drawio (mxGraph XML) diagrams in the Web Sidebar",
+  "description": "Preview .drawio (mxGraph XML) diagrams in the DeepSeek Harness Web Sidebar",
   "version": "1.0.0",
   "private": false,
   "type": "module",
