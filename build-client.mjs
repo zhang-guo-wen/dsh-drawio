@@ -1,5 +1,6 @@
-// build-client.mjs — bundle src/client into the DSH browser module-loader handoff
-// format: `window.__ModuleLoader__.load({ id, factory })`.
+// build-client.mjs — bundle src/client into the DSH client-loader handoff format.
+// window.__ModuleLoader__.load({ id, chunk?, factory }). React external; the
+// graphics engine lands in its own on-demand chunk.
 //
 // This replaces the harness monorepo's `packages/client/tsdown.client.ts`, which is
 // not published. Two details from that builder are load-bearing here:
@@ -9,11 +10,16 @@
 //      whose `exports` lists a platform condition before `import` gets its
 //      server entry inlined — and that entry may `createRequire('module')` at module
 //      scope, which the browser module table cannot answer.
-//   2. Only react and @deepseek-ai/* stay external. Everything else (maxgraph,
-//      fflate) is inlined, so the deployed artifact has no install-time dependency.
+//   2. Only react and @deepseek-ai/* stay external. Everything else (fflate) is
+//      inlined, so the deployed artifact has no install-time dependency.
+//
+// `@maxgraph/core` is 1.10 MB of the 1.13 MB single-file bundle and is needed only
+// once a `.drawio` document is actually opened, so the source reaches it through
+// `import()` in maxgraph-loader.ts. Rolldown emits that as the sibling chunk
+// `client.maxgraph.js`; the entry keeps none of the engine.
 import { rolldown } from 'rolldown'
 import { transform } from 'lightningcss'
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile, rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -22,9 +28,21 @@ const HANDOFF_ID = '@guowenzhang/dsh-drawio'
 const VIRT = '\0dsh-css:'
 const SUFFIX = '.mjs'
 
-const banner = 'window.__ModuleLoader__.load({ id: ' + JSON.stringify(HANDOFF_ID) + ', factory: (require) => {'
+/** One package-local chunk, in the shape the module loader accepts. */
+const CHUNK_FILE = /^client\.[A-Za-z0-9][A-Za-z0-9._-]*\.js$/
+
 const footer = 'return module.exports; } });'
 const intro = 'var module = { exports: {} }; var exports = module.exports;'
+
+/**
+ * One handoff registration. The entry registers under the package id; a chunk
+ * registers the same id plus its file name, which the module loader keys as
+ * `<ownerId>/<fileName>` and resolves through the entry bundle's own URL.
+ */
+function registration(fileName, isEntry) {
+  const chunk = isEntry ? '' : `chunk: ${JSON.stringify(fileName)}, `
+  return `window.__ModuleLoader__.load({ id: ${JSON.stringify(HANDOFF_ID)}, ${chunk}factory: (require) => {`
+}
 
 // CSS Modules are compiled to a hashed class map plus one deduplicated <style> tag.
 // Idempotence keeps repeated mounts from piling up duplicate sheets.
@@ -70,6 +88,50 @@ const cssModulePlugin = {
   },
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Route package-local dynamic chunks through the loader's asynchronous require.
+ * Rolldown renders `import('./x.ts')` in CJS output as a deferred synchronous
+ * `require`, which resolves nothing: a chunk is a separate script the loader has
+ * to fetch first, and only the factory's `require.async` does that.
+ */
+function asyncChunkRequirePlugin() {
+  return {
+    name: 'dsh-client-async-chunk-require',
+    renderChunk(code, chunk, outputOptions) {
+      if (outputOptions.format !== 'cjs') return null
+      const replacements = []
+      for (const dynamicImport of chunk.dynamicImports) {
+        const fileName = dynamicImport.startsWith('./') ? dynamicImport.slice(2) : dynamicImport
+        if (!CHUNK_FILE.test(fileName)) continue
+        const specifier = `./${fileName}`
+        const deferred = new RegExp(
+          `Promise\\.resolve\\(\\)\\.then\\(\\(\\)\\s*=>\\s*require\\((['"])${escapeRegExp(specifier)}\\1\\)\\)`,
+          'gu',
+        )
+        const matches = [...code.matchAll(deferred)]
+        if (matches.length === 0) {
+          throw new Error(`client bundle compiler: dynamic chunk ${JSON.stringify(specifier)} has no generated import expression`)
+        }
+        for (const match of matches) {
+          replacements.push({ at: match.index, length: match[0].length, call: `require.async(${JSON.stringify(specifier)})` })
+        }
+      }
+      if (replacements.length === 0) return null
+      let next = ''
+      let cursor = 0
+      for (const replacement of replacements.sort((left, right) => left.at - right.at)) {
+        next += code.slice(cursor, replacement.at) + replacement.call
+        cursor = replacement.at + replacement.length
+      }
+      return next + code.slice(cursor)
+    },
+  }
+}
+
 // Externals are exactly what the shell seeds through `PLATFORM_MODULES`, plus the
 // DSH client packages the host loads as their own module-graph rows. A
 // browser-safe utility such as `@deepseek-ai/dsh-util-workspace-path` is NOT
@@ -85,19 +147,32 @@ const EXTERNAL = [
   /^@deepseek-ai\/dsh-client-ui-sidebar-documentpreview(\/|$)/,
 ]
 
+const lib = join(root, 'lib')
 const bundle = await rolldown({
-  input: join(root, 'src', 'client', 'index.ts'),
+  input: { client: join(root, 'src', 'client', 'index.ts') },
   platform: 'browser',
   external: EXTERNAL,
-  plugins: [cssModulePlugin],
+  plugins: [cssModulePlugin, asyncChunkRequirePlugin()],
 })
 
-await bundle.write({
+const written = await bundle.write({
   format: 'cjs',
-  file: join(root, 'lib', 'client.js'),
-  banner,
+  dir: lib,
+  entryFileNames: 'client.js',
+  // The imported source basename becomes the published chunk name, so the
+  // `files` entry for `lib/client.*.js` already ships it.
+  chunkFileNames: 'client.[name].js',
+  banner: chunk => registration(chunk.fileName, chunk.isEntry),
   footer,
   intro,
   sourcemap: false,
 })
-console.log('lib/client.js written (ModuleLoader handoff bundle)')
+// Entry and every chunk are rewritten by the same run, so stale outputs are
+// swept only after a successful write: a failed build leaves the tracked
+// artifacts it did not replace exactly as they were.
+const emitted = new Set(written.output.map(output => output.fileName))
+for (const entry of await readdir(lib).catch(() => [])) {
+  if (!/^client(\.[^/]+)?\.js$/.test(entry) || emitted.has(entry)) continue
+  await rm(join(lib, entry), { force: true })
+}
+console.log(`lib/${[...emitted].sort().join(', lib/')} written (ModuleLoader handoff bundle)`)

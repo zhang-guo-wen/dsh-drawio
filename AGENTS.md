@@ -13,17 +13,18 @@
 
 - `src/index.ts` —— host 半边：**只有一个空的 `apply()`**。预览完全在浏览器侧，这个入口存在只是因为 Loader 按包名解析插件行并 import 它；它不注册任何 host 服务、工具或提示段。
 - `src/client/index.ts` —— 浏览器半边入口：`inject = ['slots', 'locale', 'documentPreviews']`，注册字典（命名空间 `sidebarDrawio`）、预览元数据与点名座位 `sidebar.right.tab.document` 的 body，全部走 `ctx.effect(...)` 收口。
-- `src/client/DrawioBody.tsx` —— 呈现层：把已解码的图渲染成一个 `<img>`（`data:` URL、保持宽高比），解码/布局同步完成，失败按值返回而不是抛进渲染（坏文件不能掀掉整个标签页）。
+- `src/client/DrawioBody.tsx` —— 呈现层：把已解码的图渲染成一个 `<img>`（`data:` URL、保持宽高比），失败按值返回而不是抛进渲染（坏文件不能掀掉整个标签页）；绘制是异步的，所以首帧是骨架、失败带重试。
 - `src/client/drawio.ts` —— 两种保存格式的解码（纯 mxGraph XML 与 draw.io 的压缩体）。
-- `src/client/maxgraph.ts` —— **唯一**加载 `@maxgraph/core` 的模块：离屏容器、`setEnabled(false)`、`ModelXmlSerializer` 导入、序列化成 SVG `data:` URL。
+- `src/client/maxgraph.ts` —— **唯一**加载 `@maxgraph/core` 的模块：离屏容器、`setEnabled(false)`、`ModelXmlSerializer` 导入、序列化成 SVG `data:` URL。它**只能**经 `maxgraph-loader.ts` 的动态 import 到达；静态 import 会把 1.07 MB 的引擎拉回入口（见「构建」）。
+- `src/client/maxgraph-loader.ts` —— 呈现层看到的唯一引擎入口：`renderDrawioDiagram(xml)` 内部 `await import('./maxgraph.ts')`，构建据此产出 `lib/client.maxgraph.js`，由模块加载器的 `require.async` 在第一张图需要时才取。
 - `src/client/drawio-style.ts` —— 与 draw.io 默认值一致的样式表，构造 `Graph` 时作为第 4 个参数传入。
 - `src/client/renderer.ts` —— 只放 `DrawioRenderer` / `RenderedDiagram` 两个接口，所以呈现层测试不必加载引擎。
 - `src/client/definition.ts` —— `DRAWIO_BODY_ID`（`@guowenzhang/dsh-drawio`）与 `DRAWIO_EXTENSIONS`；元数据与 keyed body 共用同一个实现 id。
 - `src/client/locales.ts` / `DrawioBody.module.css` / `css-modules.d.ts` —— 双语文案（`zh` 为准，`en` 同 key）、样式、CSS module 的类型声明。
-- `lib/` —— 构建产物：**已提交进仓库**（`index.mjs` host + `client.js` 浏览器 handoff），这样别人可以直接从 git 安装。改完源码**记得 `npm run build` 并把 `lib/` 一起提交**。
+- `lib/` —— 构建产物：**已提交进仓库**（`index.mjs` host + `client.js` 浏览器入口 + `client.maxgraph.js` 引擎 chunk），这样别人可以直接从 git 安装。改完源码**记得 `npm run build` 并把 `lib/` 一起提交**。
 - `cordis.patch.yml` —— 把插件行插入组合的 bundle 层。
 - `docs/example.png` / `docs/example.drawio` —— README 的截图与它的源文件；`package.json` 的 `files` 里带着 `docs`，README 的图片在 npm 上也解析得到。
-- `tests/` —— `smoke.mjs` / `style.mjs` / `check-bundle.mjs` 三个套件（`npm test`），外加不进套件的 `render.mjs`。
+- `tests/` —— `bundle-shape.mjs` / `smoke.mjs` / `style.mjs` / `check-bundle.mjs` 四个套件（`npm test`），`chunk-loader.mjs` 是它们共用的 chunk 加载替身，外加不进套件的 `render.mjs`。
 
 ## 构建
 
@@ -34,10 +35,10 @@ npm run typecheck  # tsc --noEmit -p tsconfig.json，针对「已发布」的 @d
 ```
 
 - host：`tsdown` 打 `src/index.ts` → `lib/index.mjs`，`tsdown.config.ts` 里 `deps.neverBundle: [/^@deepseek-ai\//]` 让所有 `@deepseek-ai/*` 保持 external。
-- client：`build-client.mjs`（rolldown）→ `lib/client.js`，包成 `window.__ModuleLoader__.load({ id, factory })`，react 与 `@deepseek-ai/*` external，`.module.css` 用 lightningcss 编译（`cssModules.pattern: '[hash]_[local]'`）并内联成一个去重的 `<style>` 标签。
+- client：`build-client.mjs`（rolldown）产出**两个**产物：入口 `lib/client.js` 与引擎 chunk `lib/client.maxgraph.js`。两者都包成 `window.__ModuleLoader__.load({ id, ... })`——入口只写 `id`，chunk 另写 `chunk: "client.maxgraph.js"`，模块加载器据此把 chunk 键成 `<包名>/client.maxgraph.js` 并从入口自己的 URL 解析它。react 与 `@deepseek-ai/*` external，`.module.css` 用 lightningcss 编译（`cssModules.pattern: '[hash]_[local]'`）并内联成一个去重的 `<style>` 标签。每次成功写入后会清扫不再产出的旧 chunk。
 - 本仓两半都不使用装饰器（host 半边是空 `apply`，浏览器侧没有 `@Remote`），所以 `tsdown.config.ts` 里没有装饰器降级 transform。
 
-**`platform: 'browser'` 是显式设置的。** harness 单仓打客户端产物用的 `packages/client/tsdown.client.ts` 并未发布，所以本仓自己打包浏览器半。在 rolldown 的 `node` platform 下，依赖会经 `node` export 条件解析：若某库的 `exports` 把平台条件排在 `import` 之前，它的**服务端入口**就会被内联，而那些入口可能在模块顶层调用 `createRequire('module')`，产出浏览器模块表无法应答的 `require("module")`。`build-client.mjs` 的 `EXTERNAL` 只有 react 与 DSH 客户端包（`@deepseek-ai/cordis`、`dsh-client-locale`、`dsh-client-ui-renderer`、`dsh-client-ui-slots`、`dsh-client-ui-sidebar-documentpreview`）；`@deepseek-ai/dsh-util-workspace-path` 这类浏览器安全的工具**被内联**（对齐 harness 的 INLINE_SAFE 策略），所以部署产物不会向模块表索取它。maxgraph 与 fflate 同样内联，因此产物没有安装期依赖。
+**`platform: 'browser'` 是显式设置的。** harness 单仓打客户端产物用的 `packages/client/tsdown.client.ts` 并未发布，所以本仓自己打包浏览器半。在 rolldown 的 `node` platform 下，依赖会经 `node` export 条件解析：若某库的 `exports` 把平台条件排在 `import` 之前，它的**服务端入口**就会被内联，而那些入口可能在模块顶层调用 `createRequire('module')`，产出浏览器模块表无法应答的 `require("module")`。`build-client.mjs` 的 `EXTERNAL` 只有 react 与 DSH 客户端包（`@deepseek-ai/cordis`、`dsh-client-locale`、`dsh-client-ui-renderer`、`dsh-client-ui-slots`、`dsh-client-ui-sidebar-documentpreview`）；`@deepseek-ai/dsh-util-workspace-path` 这类浏览器安全的工具**被内联**（对齐 harness 的 INLINE_SAFE 策略），所以部署产物不会向模块表索取它。`fflate` 与引擎都被内联进产物（引擎在自己的 chunk 里），所以部署产物没有安装期依赖。另外，rolldown 会把 `import('./maxgraph.ts')` 在 CJS 输出里写成**延迟的同步 `require`**，而 chunk 是加载器要单独取的资源、只有工厂的 `require.async` 能取到：`asyncChunkRequirePlugin` 把该表达式改写成 `require.async("./client.maxgraph.js")`，找不到预期表达式就让构建失败，而不是留下一个运行时必然 miss 的 `require`。
 
 CSS module 的类名映射在 `JSON.stringify` 前按局部名排序：lightningcss 的 `exports` 没有稳定键序，不排序会让同一份源码每次构建产出字节不同的 `lib/client.js`，在提交产物里制造假 diff。
 
@@ -112,14 +113,15 @@ npx @deepseek-ai/dsh plugin --profile web remove @guowenzhang/dsh-drawio
 ## 测试
 
 ```sh
-npm test   # node tests/smoke.mjs && node tests/style.mjs && node tests/check-bundle.mjs
+npm test   # bundle-shape → smoke → style → check-bundle
 ```
 
-三个套件都**按浏览器的方式加载构建产物**：jsdom 里 `window.__ModuleLoader__.load(...)`，模块表只放 `react`、`react/jsx-runtime` 与内联所需的少量工具，jsdom 的浏览器全局被发布到本 realm（`vm` 沙箱会让 maxGraph 的节点身份检查失败）。
+四个套件都**按浏览器的方式加载构建产物**：jsdom 里 `window.__ModuleLoader__.load(...)`，模块表只放 `react`、`react/jsx-runtime` 与内联所需的少量工具，jsdom 的浏览器全局被发布到本 realm（`vm` 沙箱会让 maxGraph 的节点身份检查失败）。`tests/chunk-loader.mjs` 提供工厂的 `require.async`（按 chunk 文件名缓存，与真实加载器一致），所以套件里的图是在**取到引擎 chunk 之后**画出来的。
 
-- `smoke.mjs`：factory 没有索取模块表以外的东西（node 内置模块会抛）、注册了字典 / 预览元数据 / 点名 body，并用内联的 maxgraph + fflate 真的画出一张图。
+- `bundle-shape.mjs`：静态断言入口没有引擎标记、经 `require.async("./client.maxgraph.js")` 触达它、两个产物都没有同步相对 `require`、注册 id/chunk 名正确、`package.json` 的 `files` 覆盖 chunk；同时打印两个产物的字节数。它守的是「引擎不会悄悄回到入口」。
+- `smoke.mjs`：factory 没有索取模块表以外的东西（node 内置模块会抛）、注册了字典 / 预览元数据 / 点名 body，然后读一次图：第一次绘制必须取一次 `client.maxgraph.js`，第二次复用（不再取），并真的画出一张图。
 - `style.mjs`：对构建产物断言 draw.io 默认样式生效（`#dae8fc` / `#6c8ebf` / `#333333`，且不含 maxGraph 的 `#774400`），且单元格自身样式仍然优先。
-- `check-bundle.mjs`：对**给定**的产物文件跑同一套样式契约（`node tests/check-bundle.mjs <path>`），所以提交进去的产物不重新构建也能验。
+- `check-bundle.mjs`：对**给定**的产物文件跑同一套样式契约（`node tests/check-bundle.mjs <path>`），所以提交进去的产物不重新构建也能验；引擎 chunk 从同一个 `lib/` 里取。
 
 因为它们验的是产物而不是源码，改了 `src/` 必须先 `npm run build`：不重建时套件可能对着旧产物全绿。`tests/render.mjs` 不在 `npm test` 里，它是开发工具——命令行给一个 `.drawio` 路径，打印尺寸并把 SVG 写到 `tests/out/rendered.svg`。
 
@@ -134,3 +136,7 @@ npm test   # node tests/smoke.mjs && node tests/style.mjs && node tests/check-bu
 7. `ctx.x` 属性访问未 inject 的服务 → 抛错（用 `ctx.get('x')`）。
 8. `dsh.client.inject` 漏列服务提供包 → 浏览器半边挂载时取不到服务（如预览注册表），标签页根本不出现。
 9. 仓库被放进 `packages/*` 或改了根 `package.json` 的定位 → `dsh plugin add <git-url>` 会装成错误的东西。
+10. `maxgraph.ts` 被入口或 `DrawioBody.tsx` 静态 import → 1.07 MB 引擎回到入口，插件启动就要解析并执行它；`tests/bundle-shape.mjs` 会红（它断言入口里没有引擎标记）。
+11. 动态 import 的 specifier 不是包内相对路径（如写成 `@maxgraph/core` 或绝对路径）→ 构建不会产出 chunk，或产出的事实上不是包内 chunk；`bundle-shape.mjs` 找不到 `require.async("./client.maxgraph.js")` 就红。
+12. 产物里留下同步相对 `require("./client*.js")` → 模块加载器只能同步应答模块表里的词，相对 chunk 必须走 `require.async`，否则运行时直接 miss；`bundle-shape.mjs` 对入口与 chunk 都断言这一点。
+13. `package.json` 的 `files` 没带上 `lib/client.*.js` → chunk 不在发布载荷里，安装后图表永远画不出来（`bundle-shape.mjs` 也断言这条）。

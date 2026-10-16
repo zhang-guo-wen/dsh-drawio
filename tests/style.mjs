@@ -1,10 +1,12 @@
 // tests/style.mjs — the renderer must apply draw.io's defaults and still let a
-// cell's own style win. Loads the BUILT bundle, so this covers the shipped artifact.
+// cell's own style win. Loads the BUILT bundle, so this covers the shipped
+// artifact, including the engine chunk it fetches on first use.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
 import { JSDOM } from 'jsdom'
+import { createChunkRequire } from './chunk-loader.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const source = readFileSync(join(root, 'lib', 'client.js'), 'utf8')
@@ -32,10 +34,16 @@ for (const key of AMBIENT) {
   if (value !== undefined) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value })
 }
 
-function scenario() {
+async function scenario() {
   window.__ModuleLoader__ = { load: (handoff) => { window.__handoff = handoff } }
   new Function('window', source)(window)
-  const moduleExports = window.__handoff.factory((s) => table[s])
+  const { require } = createChunkRequire({
+    root,
+    window,
+    id: '@guowenzhang/dsh-drawio',
+    resolve: (specifier) => table[specifier],
+  })
+  const moduleExports = window.__handoff.factory(require)
   const registered = { body: null }
   moduleExports.apply({
     effect: (fn) => fn(),
@@ -43,10 +51,10 @@ function scenario() {
     documentPreviews: { register: () => () => {} },
     slots: { inject: (_n, cb) => cb(), register: (o, c) => { registered.body = { options: o, component: c }; return () => {} } },
   })
-  const renderer = registered.body.options.inject().createRenderer()
+  const { renderDiagram } = registered.body.options.inject()
 
-  const svgOf = (xml) => {
-    const diagram = renderer.render(xml)
+  const svgOf = async (xml) => {
+    const diagram = await renderDiagram(xml)
     return decodeURIComponent(diagram.url.slice('data:image/svg+xml;charset=utf-8,'.length))
   }
 
@@ -54,7 +62,7 @@ function scenario() {
   const labelColor = (svg) => /<g fill="(#[0-9a-fA-F]{6})"[^>]*font-family/.exec(svg)?.[1]
 
   // A cell with NO style string at all: the engine's defaults decide every color.
-  const bare = svgOf(
+  const bare = await svgOf(
     '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'
     + '<mxCell id="n1" value="Default" vertex="1" parent="1">'
     + '<mxGeometry x="20" y="20" width="120" height="50" as="geometry"/></mxCell></root></mxGraphModel>',
@@ -70,7 +78,7 @@ function scenario() {
   assert.ok(!bare.includes('#774400'), 'maxGraph brown label color leaked into the output')
 
   // A cell that states its own colors: the file must win over the defaults.
-  const explicit = svgOf(
+  const explicit = await svgOf(
     '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'
     + '<mxCell id="n1" value="Explicit" style="fillColor=#ff0000;strokeColor=#00ff00;fontColor=#0000ff;" vertex="1" parent="1">'
     + '<mxGeometry x="20" y="20" width="120" height="50" as="geometry"/></mxCell></root></mxGraphModel>',
@@ -88,7 +96,7 @@ function scenario() {
 }
 
 let failure
-try { scenario() } catch (error) { failure = error } finally {
+try { await scenario() } catch (error) { failure = error } finally {
   for (const [key, descriptor] of restore) {
     if (descriptor === null || descriptor === undefined) Reflect.deleteProperty(globalThis, key)
     else Object.defineProperty(globalThis, key, descriptor)

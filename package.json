@@ -57,6 +57,7 @@
     "locale",
     "lib/*.mjs",
     "lib/client.js",
+    "lib/client.*.js",
     "cordis.patch.yml",
     "docs",
     "README.md",
@@ -68,7 +69,7 @@
     "test:metadata": "node --test tests/plugin-metadata.test.mjs",
     "build": "tsdown -c tsdown.config.ts && node build-client.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node tests/smoke.mjs && node tests/style.mjs && node tests/check-bundle.mjs"
+    "test": "node tests/bundle-shape.mjs && node tests/smoke.mjs && node tests/style.mjs && node tests/check-bundle.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "*",

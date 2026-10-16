@@ -16,7 +16,72 @@
 
 .status {
   display: block;
+  margin: 0;
   padding: 12px;
-  color: var(--dsw-color-text-secondary);
-  font-size: 13px;
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xs-13);
+}
+
+/* First paint: a placeholder of the diagram's own shape, so the pane does not
+   jump when the engine arrives. The engine is a package-local chunk. */
+.loading {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 24px 12px;
+}
+
+.skeleton {
+  width: min(100%, 320px);
+  height: 160px;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-alias-bg-skeleton);
+  animation: drawioSkeletonPulse 1.4s var(--ds-ease-in-out) infinite;
+}
+
+/* A failed layout keeps the message and the way out in one place. */
+.failure {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 12px;
+}
+
+.retry {
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 12px;
+  border: .5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xs-13);
+  cursor: pointer;
+}
+
+.retry:hover {
+  border-color: var(--dsw-alias-border-l4);
+}
+
+.retry:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+
+/* Touch hardware: the same control, at a target a finger can hit. */
+@media (pointer: coarse) {
+  .retry {
+    min-height: 44px;
+  }
+}
+
+@keyframes drawioSkeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
 }

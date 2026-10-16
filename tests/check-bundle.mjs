@@ -1,10 +1,13 @@
 // tests/check-bundle.mjs — run the style contract against a *given* built
-// bundle, so a committed artifact can be validated without trusting a rebuild.
+// entry, so a committed artifact can be validated without trusting a rebuild.
+// The engine chunk is resolved from the same `lib/` directory, exactly as the
+// module loader resolves it from the entry bundle's own URL.
 // Usage: node tests/check-bundle.mjs <path-to-client.js>
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { JSDOM } from 'jsdom'
+import { createChunkRequire } from './chunk-loader.mjs'
 
 const here = join(dirname(fileURLToPath(import.meta.url)), '..')
 const bundlePath = process.argv[2] ?? join(here, 'lib', 'client.js')
@@ -36,7 +39,13 @@ for (const key of AMBIENT) {
 
 window.__ModuleLoader__ = { load: (handoff) => { window.__handoff = handoff } }
 new Function('window', source)(window)
-const moduleExports = window.__handoff.factory((s) => table[s])
+const { require } = createChunkRequire({
+  root: here,
+  window,
+  id: '@guowenzhang/dsh-drawio',
+  resolve: (s) => table[s],
+})
+const moduleExports = window.__handoff.factory(require)
 const registered = { body: null }
 moduleExports.apply({
   effect: (fn) => fn(),
@@ -45,11 +54,13 @@ moduleExports.apply({
   slots: { inject: (_n, cb) => cb(), register: (o, c) => { registered.body = { options: o, component: c }; return () => {} } },
 })
 
-const svg = decodeURIComponent(registered.body.options.inject().createRenderer().render(
+const { renderDiagram } = registered.body.options.inject()
+const rendered = await renderDiagram(
   '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'
   + '<mxCell id="n1" value="Default" vertex="1" parent="1">'
   + '<mxGeometry x="20" y="20" width="120" height="50" as="geometry"/></mxCell></root></mxGraphModel>',
-).url.slice('data:image/svg+xml;charset=utf-8,'.length))
+)
+const svg = decodeURIComponent(rendered.url.slice('data:image/svg+xml;charset=utf-8,'.length))
 
 const fill = /fill="(#[0-9a-fA-F]{6})"/.exec(svg)?.[1]
 const label = /<g fill="(#[0-9a-fA-F]{6})"[^>]*font-family/.exec(svg)?.[1]

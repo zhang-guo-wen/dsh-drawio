@@ -1,9 +1,11 @@
 // tests/render.mjs — render a .drawio path given on the command line through the
-// BUILT bundle and print the resulting SVG, for eyeballing a real file.
+// BUILT bundle and print the resulting SVG, for eyeballing a real file. The
+// engine arrives from its own chunk, loaded the way the module loader loads it.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { JSDOM } from 'jsdom'
+import { createChunkRequire } from './chunk-loader.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const source = readFileSync(join(root, 'lib', 'client.js'), 'utf8')
@@ -30,7 +32,13 @@ for (const key of AMBIENT) {
 
 window.__ModuleLoader__ = { load: (handoff) => { window.__handoff = handoff } }
 new Function('window', source)(window)
-const moduleExports = window.__handoff.factory((s) => table[s])
+const { require } = createChunkRequire({
+  root,
+  window,
+  id: '@guowenzhang/dsh-drawio',
+  resolve: (s) => table[s],
+})
+const moduleExports = window.__handoff.factory(require)
 const registered = { body: null }
 moduleExports.apply({
   effect: (fn) => fn(),
@@ -41,7 +49,7 @@ moduleExports.apply({
 
 const target = process.argv[2]
 const xml = readFileSync(target, 'utf8')
-const diagram = registered.body.options.inject().createRenderer().render(xml)
+const diagram = await registered.body.options.inject().renderDiagram(xml)
 const svg = decodeURIComponent(diagram.url.slice('data:image/svg+xml;charset=utf-8,'.length))
 const out = join(root, 'tests', 'out')
 const { mkdirSync, writeFileSync } = await import('node:fs')

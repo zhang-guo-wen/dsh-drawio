@@ -2,13 +2,15 @@
 // table would, inside jsdom, and prove:
 //   1. the factory asks for nothing the shell does not seed (no node core module);
 //   2. the plugin registers its dictionary, preview metadata, and keyed body;
-//   3. the injected renderer really draws, so the inlined maxgraph + fflate
-//      survived the standalone bundle with no harness package at runtime.
+//   3. the injected renderer really draws, so the inlined fflate survived the
+//      standalone bundle with no harness package at runtime — and the graphics
+//      engine arrives on demand, as its own package-local chunk.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
 import { JSDOM } from 'jsdom'
+import { createChunkRequire } from './chunk-loader.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const source = readFileSync(join(root, 'lib', 'client.js'), 'utf8')
@@ -60,7 +62,7 @@ const AMBIENT = [
   'requestAnimationFrame', 'cancelAnimationFrame', 'CSSStyleDeclaration', 'Image', 'Blob',
 ]
 
-function scenario() {
+async function scenario() {
   window.__ModuleLoader__ = { load: (handoff) => { window.__handoff = handoff } }
   new Function('window', source)(window)
 
@@ -70,12 +72,20 @@ function scenario() {
   assert.equal(typeof handoff.factory, 'function', 'handoff factory missing')
 
   const requested = []
-  const moduleExports = handoff.factory((specifier) => {
-    requested.push(specifier)
-    if (!Object.hasOwn(table, specifier)) throw new Error(`missed the module table: ${specifier}`)
-    return table[specifier]
+  const { require, served } = createChunkRequire({
+    root,
+    window,
+    id: '@guowenzhang/dsh-drawio',
+    resolve: (specifier) => {
+      requested.push(specifier)
+      if (!Object.hasOwn(table, specifier)) throw new Error(`missed the module table: ${specifier}`)
+      return table[specifier]
+    },
   })
+  const moduleExports = handoff.factory(require)
   console.log('factory requested:', requested.join(', ') || '(none)')
+  // The engine is a chunk, so booting the plugin must not have fetched it.
+  assert.deepEqual(served, [], 'the entry must not fetch a chunk while it loads')
 
   assert.equal(typeof moduleExports.apply, 'function', 'plugin exports no apply')
   assert.equal([...moduleExports.inject].join(','), 'slots,locale,documentPreviews', 'inject list mismatch')
@@ -99,13 +109,20 @@ function scenario() {
   assert.equal(registered.metadata.loading, 'bytes-complete', 'loading mode mismatch')
   assert.equal(registered.body.options.name, 'sidebar.right.tab.document', 'slot name mismatch')
 
-  // Drawing proves the inlined maxgraph works without any harness package.
+  // Drawing proves the on-demand engine works without any harness package: the
+  // render awaits the loader, which fetches `client.maxgraph.js` through the
+  // factory's asynchronous require.
   const face = registered.body.options.inject()
-  const diagram = face.createRenderer().render(DIAGRAM)
+  const diagram = await face.renderDiagram(DIAGRAM)
   assert.match(diagram.url, /^data:image\/svg\+xml/, 'renderer produced no svg data url')
   assert.ok(diagram.width > 0 && diagram.height > 0, 'renderer produced no size')
+  assert.deepEqual(served, ['client.maxgraph.js'], 'the first diagram must fetch the engine chunk once')
 
-  console.log(`OK: no node-core request; registers; drew ${diagram.width}x${diagram.height} diagram`)
+  // A second diagram reuses the materialized chunk.
+  await face.renderDiagram(DIAGRAM)
+  assert.deepEqual(served, ['client.maxgraph.js'], 'the engine chunk must be fetched once')
+
+  console.log(`OK: no node-core request; registers; fetched ${served.join(',')}; drew ${diagram.width}x${diagram.height} diagram`)
 }
 
 const restore = new Map()
@@ -119,7 +136,7 @@ for (const key of AMBIENT) {
 
 let failure
 try {
-  scenario()
+  await scenario()
 } catch (error) {
   failure = error
 } finally {

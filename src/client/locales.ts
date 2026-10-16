@@ -2,7 +2,9 @@
 export const zh = {
   title: 'draw.io 图表',
   preview: '图表预览：{name}',
+  loading: '正在绘制图表…',
   failed: '无法渲染这个图表。',
+  retry: '重试',
   malformed: '这个文件不是有效的 draw.io XML。',
   unsupported: 'draw.io 预览需要完整文件内容。',
 } satisfies Record<string, string>
@@ -14,7 +16,9 @@ export type DrawioPreviewKey = keyof typeof zh
 export const en = {
   title: 'draw.io diagram',
   preview: 'Diagram preview: {name}',
+  loading: 'Drawing the diagram…',
   failed: 'This diagram could not be rendered.',
+  retry: 'Retry',
   malformed: 'This file is not valid draw.io XML.',
   unsupported: 'draw.io preview requires the complete file contents.',
 } satisfies Record<DrawioPreviewKey, string>

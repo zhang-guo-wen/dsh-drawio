@@ -32,7 +32,7 @@ From the npm registry: <https://www.npmjs.com/package/@guowenzhang/dsh-drawio> �
 
 ### Open a diagram
 
-Opening a `.drawio` file from the file tree opens it in the Sidebar's document tab and renders it as a diagram, the way an image or a Markdown file opens. Decoding and layout are synchronous, so the diagram is there on the first paint rather than behind a loading frame; the image keeps the diagram's own aspect ratio, and the pane provides scrolling.
+Opening a `.drawio` file from the file tree opens it in the Sidebar's document tab and renders it as a diagram, the way an image or a Markdown file opens. The engine that draws it is a separate, on-demand download — the plugin itself boots without it — so the first diagram shows a placeholder of the pane's own shape for a moment while the engine arrives, and a diagram the engine cannot lay out is reported in place with a **Retry**. Decoding and layout stay on the main thread, because the engine builds its SVG through the DOM; the image keeps the diagram's own aspect ratio, and the pane provides scrolling.
 
 ### See which save formats are readable
 
