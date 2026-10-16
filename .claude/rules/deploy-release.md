@@ -1,3 +1,16 @@
+---
+paths:
+  - "package.json"
+  - "lib/**"
+  - "cordis.patch.yml"
+  - "src/**"
+  - "README.md"
+  - "README.zh.md"
+  - "docs/**"
+---
+
+> 覆盖什么、何时读：安装命令、host/client 生效语义、发版与 tag 步骤；**安装、部署、发版或回答「改动没生效」时读**。
+
 # 部署与生效语义、发版
 
 覆盖：官方安装命令、host/client 两半的生效语义、`HANDOFF_ID` 与 profile 接线的关系、发版与 tag 步骤。

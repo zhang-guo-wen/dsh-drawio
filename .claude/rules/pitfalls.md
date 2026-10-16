@@ -1,3 +1,20 @@
+---
+paths:
+  - "src/**"
+  - "tests/**"
+  - "lib/**"
+  - "locale/**"
+  - "package.json"
+  - "cordis.patch.yml"
+  - "build-client.mjs"
+  - "tsdown.config.ts"
+  - "README.md"
+  - "README.zh.md"
+  - "docs/**"
+---
+
+> 覆盖什么、何时读：13 条易崩清单及其对应套件；**动手前后自查与排障时读**。
+
 # 易崩清单
 
 覆盖：13 条已知会静默出错或直接崩掉的写法，以及每条的守门套件。

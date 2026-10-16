@@ -6,7 +6,7 @@
 姊妹插件：[`dsh-drawioedit`](../dsh-drawioedit)（用上游 draw.io 编辑器在侧栏标签页里就地编辑 `.drawio`，代价是约 119 MB 的随包编辑器）。
 两者互不 import、互不依赖，可单独安装，也可以同时装——预览给只读场景，编辑给要改图的场景。
 
-本文件只放**导航与硬约束**；明细在包根 `rules/` 里按需读取（索引见文末）。
+本文件只放**导航与硬约束**；明细在 `.claude/rules/` 里按路径作用域加载（索引见文末）。
 
 ## 目录
 
@@ -19,7 +19,7 @@
 - `cordis.patch.yml` —— 把插件行插入组合的 bundle 层。
 - `tests/` —— 四个构建产物套件（`npm test`）与配套替身 / 开发工具；`docs/` —— README 的截图与其 `.drawio` 源文件。
 
-逐文件职责、`dsh`/`exports` 接线与扩展点契约见 [rules/architecture.md](rules/architecture.md)。
+逐文件职责、`dsh`/`exports` 接线与扩展点契约见 [.claude/rules/architecture.md](.claude/rules/architecture.md)。
 
 ## 构建与测试命令
 
@@ -42,18 +42,22 @@ npm test           # bundle-shape → smoke → style → check-bundle
 - 仓库根必须就是包：不要移进 `packages/*`，也不要改动根 `package.json` 的定位（`main`/`exports`/`dsh` 字段）。
 - 渲染必须**只读且 inert**：面板只拿到 `data:` URL，引擎 `setEnabled(false)`，不得让引擎实例或活 DOM 留在面板里。
 - JSX 引用的 CSS module 类必须在 CSS 里定义，否则类名是 `undefined` 且静默无样式；文案以 `zh` 为准、`en` 同 key。
-- 本文件与 `rules/*.md` 都吃 `agent-instructions` 的 65,536 字节预算（按渲染后大小、leaf-first 丢弃）：新增明细写进对应 `rules/` 文件，不要堆回本文件；条款只能搬家，不能静默删除。
+- 本文件与 `.claude/rules/*.md` 都吃 `agent-instructions` 的 65,536 字节预算（按渲染后大小、leaf-first 丢弃）：新增明细写进对应 `.claude/rules/` 文件，不要堆回本文件；条款只能搬家，不能静默删除。
 
 ## 详细规则
 
-- [rules/architecture.md](rules/architecture.md)：逐文件职责、`package.json` 的 `dsh`/`exports` 接线、`cordis.patch.yml` 与预览扩展点契约；**改目录结构、组合配置或核对宿主加载方式时读**。
-- [rules/build.md](rules/build.md)：tsdown/rolldown 两个产物的打包机制、`platform: 'browser'` 与 external/内联边界、chunk 改写与 CSS module 排序；**改 `build-client.mjs`/`tsdown.config.ts` 或排查产物 diff 时读**。
-- [rules/renderer.md](rules/renderer.md)：两种保存格式的解码、draw.io 默认样式表、边缘路由差异、尺寸计算与只读 inert 设计；**改 `src/client/` 渲染路径或解释「图怎么画得不一样」时读**。
-- [rules/testing.md](rules/testing.md)：四个套件的断言与产物加载方式、`chunk-loader` 替身、`render.mjs` / `plugin-metadata` 工具；**写或调测试、判断某条约束由谁守着时读**。
-- [rules/deploy-release.md](rules/deploy-release.md)：安装命令、host/client 生效语义、发版与 tag 步骤；**安装、部署、发版或回答「改动没生效」时读**。
-- [rules/pitfalls.md](rules/pitfalls.md)：13 条易崩清单及其对应套件；**动手前后自查与排障时读**。
+明细在 `.claude/rules/` 下，由 `dsh-claude-compat` 按**路径作用域**加载（与 Claude Code 同一套约定）：每个文件都带**非空 `paths:`** frontmatter，glob 相对本包根、正斜杠、gitignore 风格。agent 用 `read` 读到匹配 glob 的文件后，命中的**所有**规则会一起于**下一次请求**注入，每会话至多一次——不读就不注入，所以明细不会白白挤占 `agent-instructions` 的 65,536 字节预算。需要时也可以直接主动 `read` 下面索引里的文件（每个文件开头都有一句「覆盖什么、何时读」，触发它的路径写在各自的 `paths:` 里）。
+
+**同一批大文件绝不共用宽 glob**（否则一次 `read` 会把它们全带出来、把预算吃光）：新增明细前先确认它真正对应的路径，必要时拆成更小的主题文件；条款只能搬家，不能静默删除。
+
+- [.claude/rules/architecture.md](.claude/rules/architecture.md)：逐文件职责、`package.json` 的 `dsh`/`exports` 接线、`cordis.patch.yml` 与预览扩展点契约；**改目录结构、组合配置或核对宿主加载方式时读**。
+- [.claude/rules/build.md](.claude/rules/build.md)：tsdown/rolldown 两个产物的打包机制、`platform: 'browser'` 与 external/内联边界、chunk 改写与 CSS module 排序；**改 `build-client.mjs`/`tsdown.config.ts` 或排查产物 diff 时读**。
+- [.claude/rules/renderer.md](.claude/rules/renderer.md)：两种保存格式的解码、draw.io 默认样式表、边缘路由差异、尺寸计算与只读 inert 设计；**改 `src/client/` 渲染路径或解释「图怎么画得不一样」时读**。
+- [.claude/rules/testing.md](.claude/rules/testing.md)：四个套件的断言与产物加载方式、`chunk-loader` 替身、`render.mjs` / `plugin-metadata` 工具；**写或调测试、判断某条约束由谁守着时读**。
+- [.claude/rules/deploy-release.md](.claude/rules/deploy-release.md)：安装命令、host/client 生效语义、发版与 tag 步骤；**安装、部署、发版或回答「改动没生效」时读**。
+- [.claude/rules/pitfalls.md](.claude/rules/pitfalls.md)：13 条易崩清单及其对应套件；**动手前后自查与排障时读**。
 
 ## 维护约定
 
-- 详尽的「为什么」写进 `rules/`，本文件只保留导航与硬约束；拆分只搬运条款，不删条款。
+- 详尽的「为什么」写进 `.claude/rules/`，本文件只保留导航与硬约束；拆分只搬运条款，不删条款。
 - 版本号、tag、npm 发布与推送时段遵循工作区根 `AGENTS.md`；本仓的 `lib/` 随源码一起提交。

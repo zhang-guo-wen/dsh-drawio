@@ -1,3 +1,15 @@
+---
+paths:
+  - "tests/**"
+  - "src/**"
+  - "lib/**"
+  - "package.json"
+  - "build-client.mjs"
+  - "tsdown.config.ts"
+---
+
+> 覆盖什么、何时读：四个套件的断言与产物加载方式、`chunk-loader` 替身、`render.mjs` / `plugin-metadata` 工具；**写或调测试、判断某条约束由谁守着时读**。
+
 # 浏览器测试
 
 覆盖：`npm test` 链里四个构建产物套件各自断言什么、套件如何按浏览器方式加载产物、`chunk-loader` 替身与另外两个工具。

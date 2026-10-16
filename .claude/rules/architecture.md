@@ -1,3 +1,19 @@
+---
+paths:
+  - "src/**"
+  - "lib/**"
+  - "locale/**"
+  - "docs/**"
+  - "package.json"
+  - "cordis.patch.yml"
+  - "build-client.mjs"
+  - "tsdown.config.ts"
+  - "README.md"
+  - "README.zh.md"
+---
+
+> 覆盖什么、何时读：逐文件职责、`package.json` 的 `dsh`/`exports` 接线、`cordis.patch.yml` 与预览扩展点契约；**改目录结构、组合配置或核对宿主加载方式时读**。
+
 # 目录与组合接线
 
 覆盖：仓库逐文件职责、`package.json` 的 `dsh`/`exports` 接线、`cordis.patch.yml` 与文档预览扩展点契约。

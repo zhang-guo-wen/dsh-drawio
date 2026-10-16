@@ -1,3 +1,14 @@
+---
+paths:
+  - "src/**"
+  - "lib/**"
+  - "build-client.mjs"
+  - "tsdown.config.ts"
+  - "package.json"
+---
+
+> 覆盖什么、何时读：tsdown/rolldown 两个产物的打包机制、`platform: 'browser'` 与 external/内联边界、chunk 改写与 CSS module 排序；**改 `build-client.mjs`/`tsdown.config.ts` 或排查产物 diff 时读**。
+
 # 构建产物打包
 
 覆盖：host 与 client 两个产物的打包机制、`platform: 'browser'` 与 external/内联边界、chunk 改写、CSS module 类名排序。
