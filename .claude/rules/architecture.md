@@ -36,11 +36,11 @@ paths:
 - `src/client/renderer.ts` —— 只放 `DrawioRenderer` / `RenderedDiagram` 两个接口，所以呈现层测试不必加载引擎。
 - `src/client/definition.ts` —— `DRAWIO_BODY_ID`（`@guowenzhang/dsh-drawio`）与 `DRAWIO_EXTENSIONS`；元数据与 keyed body 共用同一个实现 id。
 - `src/client/locales.ts` / `DrawioBody.module.css` / `src/css-modules.d.ts` —— 双语文案（`zh` 为准，`en` 同 key）、样式、CSS module 的类型声明。
-- `locale/en.json` / `locale/zh.json` —— 插件展示元数据（`title` / `description`）；`package.json` 的 `exports['./locale/*']` 与 `files` 里的 `locale` 条目负责发布它，`npm run test:metadata` 守着它（见 [testing.md](testing.md)）。
-- `lib/` —— 构建产物：**已提交进仓库**（`index.mjs` host + `client.js` 浏览器入口 + `client.maxgraph.js` 引擎 chunk），这样别人可以直接从 git 安装。改完源码**记得 `npm run build` 并把 `lib/` 一起提交**。
+- `locale/en.json` / `locale/zh.json` —— 插件展示元数据（`title` / `description`）；`package.json` 的 `exports['./locale/*']` 与 `files` 里的 `locale` 条目负责发布它，`pnpm run test:metadata` 守着它（见 [testing.md](testing.md)）。
+- `lib/` —— 构建产物：**已提交进仓库**（`index.mjs` host + `client.js` 浏览器入口 + `client.maxgraph.js` 引擎 chunk），这样别人可以直接从 git 安装。改完源码**记得 `pnpm run build` 并把 `lib/` 一起提交**。
 - `cordis.patch.yml` —— 把插件行插入组合的 bundle 层。
 - `docs/example.png` / `docs/example.drawio` —— README 的截图与它的源文件；`package.json` 的 `files` 里带着 `docs`，README 的图片在 npm 上也解析得到。
-- `tests/` —— `bundle-shape.mjs` / `smoke.mjs` / `style.mjs` / `check-bundle.mjs` 四个套件（`npm test`），`chunk-loader.mjs` 是它们共用的 chunk 加载替身，外加不进套件的 `render.mjs`。
+- `tests/` —— `bundle-shape.mjs` / `smoke.mjs` / `style.mjs` / `check-bundle.mjs` 四个套件（`pnpm test`），`chunk-loader.mjs` 是它们共用的 chunk 加载替身，外加不进套件的 `render.mjs`。
 
 ## 组合接线
 

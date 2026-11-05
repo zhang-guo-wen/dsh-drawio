@@ -20,7 +20,7 @@ paths:
 覆盖：13 条已知会静默出错或直接崩掉的写法，以及每条的守门套件。
 **何时读**：动手改 `src/` / 构建配置 / 组合配置前后自查，或线上/本地排障时逐条对照。
 
-1. 改了 `src/` 忘记 `npm run build` 并提交 `lib/` → 装上的是旧产物（本仓没有产物新鲜度套件守着这条）。
+1. 改了 `src/` 忘记 `pnpm run build` 并提交 `lib/` → 装上的是旧产物（本仓没有产物新鲜度套件守着这条）。
 2. client 包不是 `window.__ModuleLoader__.load({ id, factory })` 格式，或 `id` 与 `HANDOFF_ID` 不一致 → 浏览器加载失败，`tests/smoke.mjs` 的 handoff 断言会先红。
 3. 改 client 不 bump `HANDOFF_ID` / 不硬刷新 → 浏览器跑旧 bundle（表现为"改动没生效"）。
 4. `build-client.mjs` 掉了 `platform: 'browser'` → 依赖的服务端入口被内联，产物在浏览器里因 `require("module")` 直接加载失败（`tests/smoke.mjs` 的空模块表能抓到）。

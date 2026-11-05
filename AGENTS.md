@@ -17,22 +17,22 @@
 - `src/client/` —— 浏览器半边：`index.ts`（注册字典 / 预览元数据 / 点名 body，全部走 `ctx.effect(...)`）、`DrawioBody.tsx`（呈现层）、`drawio.ts`（两种保存格式解码）、`maxgraph.ts`（**唯一**加载 `@maxgraph/core`）、`maxgraph-loader.ts`（唯一引擎入口）、`drawio-style.ts`、`renderer.ts`、`definition.ts`、`locales.ts`、`DrawioBody.module.css`。
 - `lib/` —— 构建产物：**已提交进仓库**（`index.mjs` host + `client.js` 浏览器入口 + `client.maxgraph.js` 引擎 chunk），这样别人可以直接从 git 安装。
 - `cordis.patch.yml` —— 把插件行插入组合的 bundle 层。
-- `tests/` —— 四个构建产物套件（`npm test`）与配套替身 / 开发工具；`docs/` —— README 的截图与其 `.drawio` 源文件。
+- `tests/` —— 四个构建产物套件（`pnpm test`）与配套替身 / 开发工具；`docs/` —— README 的截图与其 `.drawio` 源文件。
 
 逐文件职责、`dsh`/`exports` 接线与扩展点契约见 [.claude/rules/architecture.md](.claude/rules/architecture.md)。
 
 ## 构建与测试命令
 
 ```sh
-npm install
-npm run build      # tsdown（host） + node build-client.mjs（client）
-npm run typecheck  # tsc --noEmit -p tsconfig.json，针对「已发布」的 @deepseek-ai/* 包
-npm test           # bundle-shape → smoke → style → check-bundle
+pnpm install
+pnpm run build      # tsdown（host） + node build-client.mjs（client）
+pnpm run typecheck  # tsc --noEmit -p tsconfig.json，针对「已发布」的 @deepseek-ai/* 包
+pnpm test           # bundle-shape → smoke → style → check-bundle
 ```
 
 ## 关键硬约束
 
-- **改了 `src/` 必须 `npm run build` 并把 `lib/` 一起提交**：套件验的是产物不是源码，不重建可能对着旧产物全绿，而装上的是旧版本。
+- **改了 `src/` 必须 `pnpm run build` 并把 `lib/` 一起提交**：套件验的是产物不是源码，不重建可能对着旧产物全绿，而装上的是旧版本。
 - `maxgraph.ts` **只能**经 `maxgraph-loader.ts` 的动态 import 到达，且 specifier 必须是包内相对路径（`./maxgraph.ts`）；静态 import 或写成 `@maxgraph/core` 会让 1.07 MB 引擎回到入口、或产不出 chunk。
 - 两个产物都必须是 `window.__ModuleLoader__.load({ id, ... })`：`id` 与 `build-client.mjs` 的 `HANDOFF_ID`（`@guowenzhang/dsh-drawio`）、`tests/smoke.mjs` 的断言三者一致；改 client 必须 bump `HANDOFF_ID` 或强刷浏览器。
 - 产物里**不得**留下同步相对 `require("./client*.js")`：相对 chunk 只能经 `require.async("./client.maxgraph.js")` 取。

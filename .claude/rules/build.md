@@ -19,9 +19,9 @@ paths:
 ## 构建
 
 ```sh
-npm install
-npm run build      # tsdown（host） + node build-client.mjs（client）
-npm run typecheck  # tsc --noEmit -p tsconfig.json，针对「已发布」的 @deepseek-ai/* 包
+pnpm install
+pnpm run build      # tsdown（host） + node build-client.mjs（client）
+pnpm run typecheck  # tsc --noEmit -p tsconfig.json，针对「已发布」的 @deepseek-ai/* 包
 ```
 
 - host：`tsdown` 打 `src/index.ts` → `lib/index.mjs`，`tsdown.config.ts` 里 `deps.neverBundle: [/^@deepseek-ai\//]` 让所有 `@deepseek-ai/*` 保持 external。
